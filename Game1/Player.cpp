@@ -3,16 +3,17 @@
 Player::Player()
 {
 	col = new ObRect();
-	col->scale = Vector2(96.0f, 96.0f);
+	col->scale = Vector2(96.0f, 96.0f) / 2.0f;
+	col->SetWorldPos(Vector2(-400.0f, -400.0f));
 	col->isFilled = false;
 
 	walk = new ObImage(L"Walk.png");
-	walk->scale = Vector2(96.0f, 96.0f);
+	walk->scale = Vector2(96.0f, 96.0f) / 2.0f;
 	walk->maxFrame = Int2(6, 8);
 	walk->SetParentRT(*col);
 
 	roll = new ObImage(L"Roll.png");
-	roll->scale = Vector2(96.0f, 96.0f);
+	roll->scale = Vector2(96.0f, 96.0f) / 2.0f;
 	roll->maxFrame = Int2(6, 8);
 	roll->SetParentRT(*col);
 	roll->visible = false;
@@ -36,18 +37,21 @@ Player::~Player()
 	SafeDelete(roll);
 }
 
-void Player::Update()
+void Player::Update(ObCircle* _player, ObRect* _boss)
 {
 	switch (plState)
 	{
 	case PlayerState::IDLE:
-		Idle();
+		Idle(_player);
 		break;
 	case PlayerState::WALK:
-		Walk();
+		Walk(_player);
 		break;
 	case PlayerState::ROLL:
 		Roll();
+		break;
+	case PlayerState::HIT:
+		Hit(_boss);
 		break;
 	default:
 		break;
@@ -56,6 +60,9 @@ void Player::Update()
 	col->Update();
 	walk->Update();
 	roll->Update();
+
+	cout << col->GetWorldPos().x << endl;
+	cout << col->GetWorldPos().y << endl;
 }
 
 void Player::Render()
@@ -65,7 +72,7 @@ void Player::Render()
 	roll->Render();
 }
 
-void Player::Idle()
+void Player::Idle(ObCircle* _boss)
 {	
 	Input();
 	LookTarget(INPUT->GetMouseWorldPos(), walk);
@@ -76,9 +83,14 @@ void Player::Idle()
 		plState = PlayerState::WALK;
 		walk->ChangeAnim(ANIMSTATE::LOOP, 0.1f);
 	}
+	if (col->Intersect(_boss))
+	{
+		plState = PlayerState::HIT;
+		rollTime = 0.0f;
+	}
 }
 
-void Player::Walk()
+void Player::Walk(ObCircle* _boss)
 {
 	Input();
 	LookTarget(INPUT->GetMouseWorldPos(), walk);
@@ -102,6 +114,12 @@ void Player::Walk()
 		roll->visible = true;
 		rollTime = 0.0f;
 	}
+
+	if (col->Intersect(_boss))
+	{
+		plState = PlayerState::HIT;
+		rollTime = 0.0f;
+	}
 }
 
 void Player::Roll()
@@ -113,7 +131,7 @@ void Player::Roll()
 
 	col->MoveWorldPos(moveDir * 500.0f *
 		cosf(rollTime / 0.6f * DIV2PI) * DELTA);
-	//			0 ~ 1		   0 ~ 90
+	//			0 ~ 1		   0 ~ 90 <<정규화란 의미
 
 	//Roll -> Walk
 	if (rollTime > 0.6f)
@@ -122,6 +140,42 @@ void Player::Roll()
 		walk->visible = true;
 		roll->visible = false;
 	}
+}
+
+void Player::Hit(ObRect* _boss)
+{
+	rollTime += DELTA;
+	if (rollTime > 0.3f) //moveDir
+	{
+		walk->color = Color(RANDOM->Float(0.5f, 0.8f), 0.5f, 0.5f, 0.5f);
+		col->MoveWorldPos(-moveDir * 500.0f *
+			cosf(rollTime / 0.6f * DIV2PI) * DELTA);
+		//			0 ~ 1		   0 ~ 90 <<정규화란 의미
+		
+	}
+
+
+
+	//Roll -> Walk
+	if (rollTime > 0.6f)
+	{
+
+		if (moveDir != Vector2(0.0f, 0.0f))
+		{
+			walk->color = Color(0.5f, 0.5f, 0.5f, 0.5f);
+			plState = PlayerState::WALK;
+			walk->ChangeAnim(ANIMSTATE::LOOP, 0.1f);
+		}
+		else
+		{
+			walk->color = Color(0.5f, 0.5f, 0.5f, 0.5f);
+			plState = PlayerState::IDLE;
+			walk->ChangeAnim(ANIMSTATE::STOP, 0.1f);
+			walk->frame.x = 0;
+		}
+	}
+
+
 }
 
 void Player::Input()
@@ -189,4 +243,9 @@ void Player::LookTarget(Vector2 target, ObImage* img)
 	}
 
 	img->frame.y = frameY[dirState];
+}
+
+ObRect* Player::getCol()
+{
+	return col;
 }

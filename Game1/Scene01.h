@@ -3,7 +3,8 @@
 class Scene01 : public Scene
 {
 private:
-	Player* pl;
+	Player*		pl;
+	Boss*		bs;
 
 public:
 	virtual void Init() override;

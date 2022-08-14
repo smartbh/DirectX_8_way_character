@@ -4,5 +4,7 @@
 
 #include "Character.h"
 #include "Player.h"
+#include "Boss.h"
+
 
 #include "Scene01.h"
